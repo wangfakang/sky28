@@ -213,9 +213,9 @@ Thx
 
 Author
 ====
-* Linux\nginx\golang\c\c++爱好者
+* Linux\nginx\golang\lua\python\c\c++爱好者
 * 欢迎一起交流  一起学习# 
 * Others say good and Others good
-
+* [my blog site](http://wangfakang.github.io)
 
 

@@ -1,4 +1,4 @@
-今天在编写nginx模块的时候遇到一个诡异的core dump，看了core位置相关的变量值后简直被惊呆了、下面使用一个可复现的列子来复现。。。
+今天在编写nginx模块的时候遇到一个诡异的core dump，看了core位置相关的变量值后简直被惊呆了、下面使用一个类似问题的列子来复现一下整个过程。。。
 
 
 相关复现环境
@@ -19,18 +19,16 @@ gcc version 4.4.6 20110731 (Red Hat 4.4.6-3) (GCC)
 
 1.c 文件内容：
 
-
 ```
 #include <stdio.h>
 
 //extern void * get_ptr();
 
-int main()
+int main(int argc, char *const *argv)
 {
     void *p;
     
     p = NULL;
-
     p = get_ptr();
 
     printf("%#p\n", p);
@@ -50,9 +48,7 @@ void * get_ptr()
 {
     int *p;
 
-
     p = (int*) 0x80000000;
-
     printf("%#p\n", p)
 
     return p;
@@ -62,7 +58,6 @@ void * get_ptr()
 
 编译：
 
-
 ```
 gcc -g -c 1.c 
 gcc -g -c 2.c 
@@ -71,23 +66,18 @@ gcc -o test 1.o  2.o
 
 ```
 
-
 运行：
-
 
 ./test
 
 输出：
 ```
-
 0x80000000
 0xffffffff80000000
 ```
 
-
 gdb汇编分析
 =======
-
 
 看到输出结果诡异吧（看到高32位都被1填充了），下面就gdb一步步的分析看看：
 
@@ -133,10 +123,10 @@ rax            0x80000000	2147483648
 0x00000000004004de in main () at 1.c:11
 11	    p = get_ptr();
 (gdb) x/i $pc
-=> 0x4004de <main+26>:	cltq              // 注意这条指令
+=> 0x4004de <main+26>:	cltq                          // 注意这条指令
 (gdb) info registers rax
-rax            0x80000000	2147483648    // 在执行cltq指令之前，rax寄存器的值还是0x80000000属于正常的
-(gdb) si                                  // 执行cltq指令
+rax            0x80000000	2147483648            // 在执行cltq指令之前，rax寄存器的值还是0x80000000属于正常的
+(gdb) si                                              // 执行cltq指令
 0x00000000004004e0	11	    p = get_ptr();
 (gdb) info registers rax
 rax            0xffffffff80000000	-2147483648   // 此时发现执行cltq指令后rax寄存器的值就变为0xffffffff80000000，所以罪魁祸首就是这个cltq指令，为啥会执行这条指令
@@ -164,7 +154,6 @@ $gcc -g -c 1.c
 带着疑问去gg发现是由于： 未申明的全局函数默认返回值是int类型的，于是申明了一下这个函数对比了一下其汇编代码：
 
 ```
-
 
 + +-- 13 lines: .file "1.c"---------------------------------|+ +-- 13 lines: .file "1.c"---------------------------------
           movq    %rsp, %rbp                                |          movq    %rsp, %rbp
